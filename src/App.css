@@ -1,5 +1,7 @@
 .App {
   text-align: center;
+  margin: auto;
+  width: 60%;
 }
 
 .App-logo {
@@ -35,4 +37,11 @@
   to {
     transform: rotate(360deg);
   }
+}
+
+.drop-area {
+  border-color: "black";
+  border-style: "dotted";
+  border-width: "3px";
+  border-radius: 20;
 }

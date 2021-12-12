@@ -3,9 +3,30 @@ import {useDropzone} from "react-dropzone"
 import {parse} from "csv-parse/lib/sync"
 import {stringify} from "csv-stringify/lib/sync"
 import janData from "./final.json"
+import iconv from "iconv-lite"
+
+
+// promisified fileReader, this was needed to specify 
+// the encoding of the input file (shift-jis).
+// source: https://blog.shovonhasan.com/using-promises-with-filereader/
+const myReadFileAsText = (inputFile: File, encoding: string): Promise<string> => {
+  const temporaryFileReader = new FileReader();
+
+  return new Promise((resolve, reject) => {
+    temporaryFileReader.onerror = () => {
+      temporaryFileReader.abort();
+      reject(new DOMException("Problem parsing input file."));
+    };
+
+    temporaryFileReader.onload = () => {
+      resolve(temporaryFileReader.result as string);
+    };
+    temporaryFileReader.readAsText(inputFile, encoding);
+  })
+}
 
 const convertCSV = async (file: File) => {
-  const text = await file.text()
+  const text = await myReadFileAsText(file, "Shift-jis")
 
   // parse the data with csv library
   const data: {[key: string]: string}[] = parse(text, {columns: true})
@@ -54,13 +75,12 @@ const convertCSV = async (file: File) => {
 
 
 function App() {
-  const {acceptedFiles, getRootProps, getInputProps} = useDropzone()
-
+  const {acceptedFiles, getRootProps, getInputProps} = useDropzone({})
   const file = acceptedFiles.length === 0? null: acceptedFiles[0]
   
   const downloadCSV = (csvData: string) => {
     const aElement = document.createElement("a")
-    const tempFile = new Blob([csvData], {type: "text/plain"})
+    const tempFile = new Blob([iconv.encode(csvData, "Shift_JIS")], {type: "text/plain"})
     aElement.href = URL.createObjectURL(tempFile)
     aElement.download = file? file.name : "newfile.csv"
     document.body.appendChild(aElement)    
@@ -68,7 +88,6 @@ function App() {
   }
 
   const onClickButton = async () => {
-    
     if (file) {
       const data = await convertCSV(file)
       console.log(data)
@@ -78,13 +97,23 @@ function App() {
 
   return (
     <div className="App">
-      <div>
+      <div style={{border: "3px dotted black", borderRadius: 20, margin: 20}}>
         <div {...getRootProps()}>
           <input {...getInputProps()} />
-          <p>Drag 'n' drop some files here, or click to select files</p>
+          <p>
+            ここにファイルをドロップするか、クリックしてファイルを選択してください。
+          </p>
         </div>
       </div>  
-      <button onClick={onClickButton} disabled={!file}>Click to download the converted data.</button>
+      <div>
+        <button onClick={onClickButton} disabled={!file}>ダウンロード</button>
+      </div>
+      <div style={{width: "60%", margin: "auto", textAlign:"left"}}>
+        <ul>
+          <li>スマレジからダウンロードするときに"Windows (shift-jis)"を選択したファイルを使用してください</li>
+          <li>ダウンロードされたファイルはWindows向けに作成されています。Macで開くと文字化けが起こります。</li>
+        </ul>  
+      </div>
     </div>
   );
 }
