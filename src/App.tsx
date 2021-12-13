@@ -1,9 +1,18 @@
 import './App.css'
+import {useState} from "react"
 import {useDropzone} from "react-dropzone"
 import {parse} from "csv-parse/lib/sync"
 import {stringify} from "csv-stringify/lib/sync"
 import janData from "./final.json"
 import iconv from "iconv-lite"
+
+type Datum = {
+  "返品数": string,
+  "販売点数": string,
+  "商品コード": string,
+  "商品番号"?: string,
+  "販売点数 (net)"?: string,
+}
 
 
 // promisified fileReader, this was needed to specify 
@@ -25,11 +34,21 @@ const myReadFileAsText = (inputFile: File, encoding: string): Promise<string> =>
   })
 }
 
-const convertCSV = async (file: File) => {
+const calculateItemsSold = (datum: {"販売点数": string, "返品数": string}) => {
+  if (datum["販売点数"] && datum["返品数"]) return (parseFloat(datum["販売点数"]) - parseFloat(datum["返品数"])).toString(10)
+  return ""
+}
+
+const readCSV = async (file: File) => {
   const text = await myReadFileAsText(file, "Shift-jis")
 
   // parse the data with csv library
   const data: {[key: string]: string}[] = parse(text, {columns: true})
+  return data as Datum[]
+}
+
+const convertCSV = async (file: File) => {
+  const data = await readCSV(file)
 
   // add "Item code" to the data by looking up final.json
   // calculate the actual number of items sold 
@@ -42,7 +61,7 @@ const convertCSV = async (file: File) => {
       // @ts-ignore
       newDatum["商品番号"] = janData[datum["商品コード"]]
     }
-    newDatum["販売点数 (net)"] = (parseFloat(datum["販売点数"]) - parseFloat(datum["返品数"])).toString(10)
+    newDatum["販売点数 (net)"] = calculateItemsSold(datum)
     return newDatum
   })
 
@@ -65,8 +84,11 @@ const convertCSV = async (file: File) => {
   // joint them
   const finalData = tempData.concat(notFound)
 
-  // stringify the data
-  return stringify(finalData, {
+  return finalData
+}
+
+const stringifyCSV = (data: Datum[]) => {
+  return stringify(data, {
     header: true,
     columns: [{key: "商品番号"}, {key: "商品コード"}, {key: "商品名"}, {key: "部門名"}, {key: "純売上"}, {key: "純売上(税抜)"}, {key: "消費税"}, {key: "原価"}, {key: "純売上構成比"}, {key: "販売点数"}, {key: "返品数"}, {key: "販売点数 (net)"}, {key: "販売点数構成比"}, {key: "在庫数"}]
   })
@@ -75,7 +97,19 @@ const convertCSV = async (file: File) => {
 
 
 function App() {
-  const {acceptedFiles, getRootProps, getInputProps} = useDropzone({})
+  const [convertedData, setConvertedData] = useState<Datum[]|null>(null)
+  const filterFiles = (acceptedFiles: File[]) => {
+    return acceptedFiles.length === 0? null: acceptedFiles[0]
+  }
+  const {acceptedFiles, getRootProps, getInputProps} = useDropzone({
+    onDrop: (files) => {
+      const file = filterFiles(files)
+      if (file) {
+        convertCSV(file)
+          .then(data => setConvertedData(data))
+      }   
+    }    
+  })
   const file = acceptedFiles.length === 0? null: acceptedFiles[0]
   
   const downloadCSV = (csvData: string) => {
@@ -87,11 +121,16 @@ function App() {
     aElement.click()
   }
 
-  const onClickButton = async () => {
-    if (file) {
-      const data = await convertCSV(file)
-      console.log(data)
-      downloadCSV(data)
+  const onClickDownloadButton = async () => {
+    if (convertedData) {
+      downloadCSV(stringifyCSV(convertedData))
+    }
+  }
+
+  const onClickCopyButton = async () => {
+    if (convertedData) {
+      const salesData = convertedData.map(datum => calculateItemsSold(datum))
+      navigator.clipboard.writeText(salesData.join("\n"))
     }
   }
 
@@ -105,8 +144,9 @@ function App() {
           </p>
         </div>
       </div>  
-      <div>
-        <button onClick={onClickButton} disabled={!file}>ダウンロード</button>
+      <div style={{display: "flex", justifyContent: "space-around"}}>
+        <button onClick={onClickDownloadButton} disabled={!convertedData}>ダウンロード</button>
+        <button onClick={onClickCopyButton} disabled={!convertedData}>クリップボードにコピー</button>
       </div>
       <div style={{width: "60%", margin: "auto", textAlign:"left"}}>
         <ul>
