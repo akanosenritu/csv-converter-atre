@@ -3,7 +3,7 @@ import {useState} from "react"
 import {useDropzone} from "react-dropzone"
 import {parse} from "csv-parse/lib/sync"
 import {stringify} from "csv-stringify/lib/sync"
-import janData from "./final.json"
+import janData from "./jan1211.json"
 import iconv from "iconv-lite"
 
 type Datum = {
