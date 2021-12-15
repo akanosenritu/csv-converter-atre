@@ -76,7 +76,7 @@ const convertCSV = async (file: File, janData: "1211" | "1216") => {
   const order1 = Array(31).fill(0).map((elem, index) => "新" + (index+1).toString())
   // before 1216: 233 items
   // after 1216: 259 items
-  const numberOfOldItems = janData === "1211"? 233: 259
+  const numberOfOldItems = janData === "1211"? 234: 259
   const order2 = Array(numberOfOldItems).fill(0).map((elem, index) => (index+1).toString())
   const requiredItemNumbers = order1.concat(order2)
   
