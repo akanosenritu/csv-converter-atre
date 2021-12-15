@@ -56,7 +56,7 @@ const addItemNumber = (datum: Datum, janDataSource: "1211" | "1216") => {
   // @ts-ignore
   if (janData[datum["商品コード"]]) {
     // @ts-ignore
-    newDatum["商品番号"] = janData[datum["商品コード"]]
+    newDatum["商品番号"] = janData[datum["商品コード"]].toString()
   }
   return newDatum
 }
@@ -73,17 +73,15 @@ const convertCSV = async (file: File, janData: "1211" | "1216") => {
   })
 
   // generate required item numbers
-  const order1 = Array(31).fill(0).map((elem, index) => "新" + (index+1).toString())
-  // before 1216: 233 items
-  // after 1216: 259 items
-  const numberOfOldItems = janData === "1211"? 234: 259
-  const order2 = Array(numberOfOldItems).fill(0).map((elem, index) => (index+1).toString())
-  const requiredItemNumbers = order1.concat(order2)
+  // before 1216: 265 items
+  // after 1216: 290 items
+  const numberOfItems = janData === "1211"? 265: 290
+  const requiredItemNumbers = Array(numberOfItems).fill(0).map((elem, index) => index+1)
   
   // insert placeholders in the place of an item if no data was provided by POS 
   const tempData: any[] = []
   for (const num of requiredItemNumbers) {
-    const index = modifiedData.findIndex(datum => datum["商品番号"] === num)
+    const index = modifiedData.findIndex(datum => datum["商品番号"] === num.toString())
     if (index === -1) tempData.push({"商品番号": num.toString()})
     else tempData.push(modifiedData[index])
   }
@@ -173,14 +171,14 @@ function App() {
         </div>
       </div>  
       <div style={{display: "flex", margin: 5}}>
-        <div style={{width: "50%"}}>235番以降の商品追加前</div>
+        <div style={{width: "50%"}}>266番以降の商品追加前</div>
         <div style={{display: "flex", justifyContent: "space-around", width: "50%"}}>
           <button onClick={onClickDownloadButton} disabled={!convertedData}>ダウンロード</button>
           <button onClick={onClickCopyButton} disabled={!convertedData}>クリップボードにコピー</button>
         </div>
       </div>  
       <div style={{display: "flex", margin: 5}}>
-        <div style={{width: "50%"}}>235番以降の商品追加後</div>
+        <div style={{width: "50%"}}>266番以降の商品追加後</div>
         <div style={{display: "flex", justifyContent: "space-around", width: "50%"}}>
           <button onClick={onClickDownloadButton1216} disabled={!convertedData2}>ダウンロード</button>
           <button onClick={onClickCopyButton1216} disabled={!convertedData2}>クリップボードにコピー</button>
