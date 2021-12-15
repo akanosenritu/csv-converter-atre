@@ -149,13 +149,15 @@ function App() {
 
   const onClickCopyButton = async () => {
     if (convertedData) {
-      const salesData = convertedData.map(datum => calculateItemsSold(datum))
+      // the last element is excluded because it is the sum.
+      const salesData = convertedData.map(datum => calculateItemsSold(datum)).slice(0, -1)
       navigator.clipboard.writeText(salesData.join("\n"))
     }
   }
   const onClickCopyButton1216 = async () => {
     if (convertedData2) {
-      const salesData = convertedData2.map(datum => calculateItemsSold(datum))
+      // the last element is excluded because it is the sum.
+      const salesData = convertedData2.map(datum => calculateItemsSold(datum)).slice(0, -1)
       navigator.clipboard.writeText(salesData.join("\n"))
     }
   }
