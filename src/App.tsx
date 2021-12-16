@@ -171,16 +171,9 @@ function App() {
             ここにファイルをドロップするか、クリックしてファイルを選択してください。
           </p>
         </div>
-      </div>  
+      </div>
       <div style={{display: "flex", margin: 5}}>
-        <div style={{width: "50%"}}>266番以降の商品追加前</div>
-        <div style={{display: "flex", justifyContent: "space-around", width: "50%"}}>
-          <button onClick={onClickDownloadButton} disabled={!convertedData}>ダウンロード</button>
-          <button onClick={onClickCopyButton} disabled={!convertedData}>クリップボードにコピー</button>
-        </div>
-      </div>  
-      <div style={{display: "flex", margin: 5}}>
-        <div style={{width: "50%"}}>266番以降の商品追加後</div>
+        <div style={{width: "50%"}}>売上管理表1216更新 .xlsx 用</div>
         <div style={{display: "flex", justifyContent: "space-around", width: "50%"}}>
           <button onClick={onClickDownloadButton1216} disabled={!convertedData2}>ダウンロード</button>
           <button onClick={onClickCopyButton1216} disabled={!convertedData2}>クリップボードにコピー</button>
@@ -195,6 +188,24 @@ function App() {
             Excel上にそのまま貼り付けることができます。
           </li>
         </ul>  
+      </div>
+      <hr />
+      <div style={{marginTop: 20}}>
+        <div style={{fontSize: 18}}>変更履歴</div>
+        <div style={{marginTop: 10, textAlign: "left", fontSize: 12}}>
+          <p>
+            2021/12/06 17:00<br />
+            <ul>
+              <li>「【ごちうさ】売上管理表1216更新 .xlsx」に対応。</li>
+              <ul>
+                <li>旧94番「ご当地ティッピーTシャツ-REVIVAL-」(4573190000000)を削除。それに伴い旧95番以降は1番ずつ移動。(ex. 95-&lt;94)</li>
+                <li>旧265番「クリアファイル3枚セット＜ご注文はオーケストラですか？＞」(4573189373198) 以降に新規商品25点を追加。</li>
+                <li>末尾に「レジ袋」(123456789012) を追加。</li>
+                <li>総登録数290点。</li>
+              </ul>
+            </ul>
+          </p>
+        </div>
       </div>
     </div>
   );
