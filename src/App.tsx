@@ -3,8 +3,8 @@ import {useState} from "react"
 import {useDropzone} from "react-dropzone"
 import {parse} from "csv-parse/lib/sync"
 import {stringify} from "csv-stringify/lib/sync"
-import janData1211 from "./jan1211.json"
 import janData1216 from "./jan1216.json"
+import janDataTanaka from "./janTanaka.json"
 import iconv from "iconv-lite"
 
 type Datum = {
@@ -48,8 +48,8 @@ const readCSV = async (file: File) => {
   return data as Datum[]
 }
 
-const addItemNumber = (datum: Datum, janDataSource: "1211" | "1216") => {
-  const janData = janDataSource === "1211" ? janData1211: janData1216
+const addItemNumber = (datum: Datum, janDataSource: "1216" | "tanaka") => {
+  const janData = janDataSource === "1216" ? janData1216: janDataTanaka
   const newDatum = {...datum}
   newDatum["商品番号"] = "Not found"
   newDatum["販売点数 (net)"] = "Error" 
@@ -61,7 +61,7 @@ const addItemNumber = (datum: Datum, janDataSource: "1211" | "1216") => {
   return newDatum
 }
 
-const convertCSV = async (file: File, janData: "1211" | "1216") => {
+const convertCSV = async (file: File, janData: "1216" | "tanaka") => {
   const data = await readCSV(file)
 
   // add "Item code" to the data by looking up final.json
@@ -73,9 +73,9 @@ const convertCSV = async (file: File, janData: "1211" | "1216") => {
   })
 
   // generate required item numbers
-  // before 1216: 265 items
-  // after 1216: 290 items
-  const numberOfItems = janData === "1211"? 265: 290
+  // for janData1216: 290
+  // for janDataTanaka: 290
+  const numberOfItems = 290
   const requiredItemNumbers = Array(numberOfItems).fill(0).map((elem, index) => index+1)
   
   // insert placeholders in the place of an item if no data was provided by POS 
@@ -105,10 +105,11 @@ const stringifyCSV = (data: Datum[]) => {
 
 
 function App() {
-  // due to the addition of items on 12/16, two states are now used.
-  // one is for before 12/1
+  // convertedData2: for 売上管理表1216更新 .xlsx
+  // convertedData3: for ごちうさアトレ2021最終在庫報告用.xlsx
   const [convertedData2, setConvertedData2] = useState<Datum[]|null>(null)
-
+  const [convertedData3, setConvertedData3] = useState<Datum[]|null>(null)
+  
   const filterFiles = (acceptedFiles: File[]) => {
     return acceptedFiles.length === 0? null: acceptedFiles[0]
   }
@@ -118,7 +119,8 @@ function App() {
       if (file) {
         convertCSV(file, "1216")
           .then(data => setConvertedData2(data))
-
+        convertCSV(file, "tanaka")
+          .then(data => setConvertedData3(data))
       }   
     }    
   })
@@ -133,6 +135,7 @@ function App() {
     aElement.click()
   }
 
+  // for janData1216
   const onClickDownloadButton1216 = async () => {
     if (convertedData2) {
       downloadCSV(stringifyCSV(convertedData2))
@@ -143,6 +146,17 @@ function App() {
       // the last element is excluded because it is the sum.
       const salesData = convertedData2.map(datum => calculateItemsSold(datum)).slice(0, -1)
       navigator.clipboard.writeText(salesData.join("\n"))
+    }
+  }
+
+  // for janDataTanaka
+  const onClickCopyButtonTanaka = async () => {
+    if (convertedData3) {
+      // the last element is excluded because it is the sum.
+      const salesData = convertedData3.map(datum => calculateItemsSold(datum)).slice(0, -1)
+      navigator.clipboard.writeText(salesData.slice(0, 290).join("\n"))  
+      console.log(convertedData3)
+      console.log(salesData)
     }
   }
 
@@ -157,10 +171,17 @@ function App() {
         </div>
       </div>
       <div style={{display: "flex", margin: 5}}>
-        <div style={{width: "50%"}}>売上管理表1216更新 .xlsx 用</div>
+        <div style={{width: "50%"}}>売上管理表1216更新.xlsx 用</div>
         <div style={{display: "flex", justifyContent: "space-around", width: "50%"}}>
           <button onClick={onClickDownloadButton1216} disabled={!convertedData2}>ダウンロード</button>
           <button onClick={onClickCopyButton1216} disabled={!convertedData2}>クリップボードにコピー</button>
+        </div>
+      </div>
+      <div style={{display: "flex", margin: 5}}>
+        <div style={{width: "50%"}}>ごちうさアトレ2021最終在庫報告用.xlsx 用</div>
+        <div style={{display: "flex", justifyContent: "space-around", width: "50%"}}>
+          <button disabled={true}>ダウンロード</button>
+          <button onClick={onClickCopyButtonTanaka} disabled={!convertedData3}>クリップボードにコピー</button>
         </div>
       </div>
       <div style={{width: "90%", margin: "auto", textAlign:"left"}}>
