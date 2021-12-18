@@ -199,7 +199,7 @@ function App() {
         <div style={{fontSize: 18}}>変更履歴</div>
         <div style={{marginTop: 10, textAlign: "left", fontSize: 12}}>
           <p>
-            2021/12/06 17:00<br />
+            2021/12/16 17:00<br />
             <ul>
               <li>「【ごちうさ】売上管理表1216更新 .xlsx」に対応。</li>
               <ul>
@@ -208,6 +208,12 @@ function App() {
                 <li>末尾に「レジ袋」(123456789012) を追加。</li>
                 <li>総登録数290点。</li>
               </ul>
+            </ul>
+          </p>
+          <p>
+            2021/12/18 14:00<br />
+            <ul>
+              <li>「ごちうさアトレ2021最終在庫報告用.xlsx」に対応。</li>
             </ul>
           </p>
         </div>
