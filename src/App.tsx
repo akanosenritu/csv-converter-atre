@@ -107,7 +107,6 @@ const stringifyCSV = (data: Datum[]) => {
 function App() {
   // due to the addition of items on 12/16, two states are now used.
   // one is for before 12/1
-  const [convertedData, setConvertedData] = useState<Datum[]|null>(null)
   const [convertedData2, setConvertedData2] = useState<Datum[]|null>(null)
 
   const filterFiles = (acceptedFiles: File[]) => {
@@ -117,8 +116,6 @@ function App() {
     onDrop: (files) => {
       const file = filterFiles(files)
       if (file) {
-        convertCSV(file, "1211")
-          .then(data => setConvertedData(data))
         convertCSV(file, "1216")
           .then(data => setConvertedData2(data))
 
@@ -136,22 +133,9 @@ function App() {
     aElement.click()
   }
 
-  const onClickDownloadButton = async () => {
-    if (convertedData) {
-      downloadCSV(stringifyCSV(convertedData))
-    }
-  }
   const onClickDownloadButton1216 = async () => {
     if (convertedData2) {
       downloadCSV(stringifyCSV(convertedData2))
-    }
-  }
-
-  const onClickCopyButton = async () => {
-    if (convertedData) {
-      // the last element is excluded because it is the sum.
-      const salesData = convertedData.map(datum => calculateItemsSold(datum)).slice(0, -1)
-      navigator.clipboard.writeText(salesData.join("\n"))
     }
   }
   const onClickCopyButton1216 = async () => {
