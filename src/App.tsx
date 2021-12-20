@@ -3,7 +3,7 @@ import {useState} from "react"
 import {useDropzone} from "react-dropzone"
 import {parse} from "csv-parse/lib/sync"
 import {stringify} from "csv-stringify/lib/sync"
-import janData1216 from "./jan1216.json"
+import janData1221 from "./jan1221.json"
 import janDataTanaka from "./janTanaka.json"
 import iconv from "iconv-lite"
 
@@ -48,8 +48,8 @@ const readCSV = async (file: File) => {
   return data as Datum[]
 }
 
-const addItemNumber = (datum: Datum, janDataSource: "1216" | "tanaka") => {
-  const janData = janDataSource === "1216" ? janData1216: janDataTanaka
+const addItemNumber = (datum: Datum, janDataSource: "1221" | "tanaka") => {
+  const janData = janDataSource === "1221" ? janData1221: janDataTanaka
   const newDatum = {...datum}
   newDatum["商品番号"] = "Not found"
   newDatum["販売点数 (net)"] = "Error" 
@@ -61,7 +61,7 @@ const addItemNumber = (datum: Datum, janDataSource: "1216" | "tanaka") => {
   return newDatum
 }
 
-const convertCSV = async (file: File, janData: "1216" | "tanaka") => {
+const convertCSV = async (file: File, janData: "1221" | "tanaka") => {
   const data = await readCSV(file)
 
   // add "Item code" to the data by looking up final.json
@@ -75,7 +75,7 @@ const convertCSV = async (file: File, janData: "1216" | "tanaka") => {
   // generate required item numbers
   // for janData1216: 290
   // for janDataTanaka: 290
-  const numberOfItems = 290
+  const numberOfItems = janData === "tanaka"? 290: 355
   const requiredItemNumbers = Array(numberOfItems).fill(0).map((elem, index) => index+1)
   
   // insert placeholders in the place of an item if no data was provided by POS 
@@ -105,7 +105,7 @@ const stringifyCSV = (data: Datum[]) => {
 
 
 function App() {
-  // convertedData2: for 売上管理表1216更新 .xlsx
+  // convertedData2: for 売上管理表1220更新 .xlsx
   // convertedData3: for ごちうさアトレ2021最終在庫報告用.xlsx
   const [convertedData2, setConvertedData2] = useState<Datum[]|null>(null)
   const [convertedData3, setConvertedData3] = useState<Datum[]|null>(null)
@@ -117,7 +117,7 @@ function App() {
     onDrop: (files) => {
       const file = filterFiles(files)
       if (file) {
-        convertCSV(file, "1216")
+        convertCSV(file, "1221")
           .then(data => setConvertedData2(data))
         convertCSV(file, "tanaka")
           .then(data => setConvertedData3(data))
@@ -135,13 +135,13 @@ function App() {
     aElement.click()
   }
 
-  // for janData1216
-  const onClickDownloadButton1216 = async () => {
+  // for janData1221
+  const onClickDownloadButton1221 = async () => {
     if (convertedData2) {
       downloadCSV(stringifyCSV(convertedData2))
     }
   }
-  const onClickCopyButton1216 = async () => {
+  const onClickCopyButton1221 = async () => {
     if (convertedData2) {
       // the last element is excluded because it is the sum.
       const salesData = convertedData2.map(datum => calculateItemsSold(datum)).slice(0, -1)
@@ -171,14 +171,14 @@ function App() {
         </div>
       </div>
       <div style={{display: "flex", margin: 5}}>
-        <div style={{width: "50%"}}>売上管理表1216更新.xlsx 用</div>
+        <div style={{width: "50%"}}>売上管理表1221更新.xlsx 用</div>
         <div style={{display: "flex", justifyContent: "space-around", width: "50%"}}>
-          <button onClick={onClickDownloadButton1216} disabled={!convertedData2}>ダウンロード</button>
-          <button onClick={onClickCopyButton1216} disabled={!convertedData2}>クリップボードにコピー</button>
+          <button onClick={onClickDownloadButton1221} disabled={!convertedData2}>ダウンロード</button>
+          <button onClick={onClickCopyButton1221} disabled={!convertedData2}>クリップボードにコピー</button>
         </div>
       </div>
       <div style={{display: "flex", margin: 5}}>
-        <div style={{width: "50%"}}>ごちうさアトレ2021最終在庫報告用.xlsx 用</div>
+        <div style={{width: "50%"}}>ごちうさアトレ2021最終在庫報告用.xlsx 用 (12/18時点)</div>
         <div style={{display: "flex", justifyContent: "space-around", width: "50%"}}>
           <button disabled={true}>ダウンロード</button>
           <button onClick={onClickCopyButtonTanaka} disabled={!convertedData3}>クリップボードにコピー</button>
@@ -214,6 +214,18 @@ function App() {
             2021/12/18 14:00<br />
             <ul>
               <li>「ごちうさアトレ2021最終在庫報告用.xlsx」に対応。</li>
+            </ul>
+          </p>
+          <p>
+            2021/12/21 01:30<br />
+            <ul>
+              <li>「【ごちうさ】売上管理表1220更新 .xlsx」に対応。</li>
+              <ul>
+                <li>289番「アクリル時計＜flight attendant＞」(4573189369979)以降に新規商品65点を追加。</li>
+                <li>末尾に「レジ袋」(123456789012, 旧290番-&gt;新355番) を移動。</li>
+                <li>総登録数355点。</li>
+              </ul>
+              <li>「【ごちうさ】売上管理表1216更新 .xlsx」用を削除。</li>
             </ul>
           </p>
         </div>
