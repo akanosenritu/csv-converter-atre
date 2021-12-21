@@ -171,7 +171,7 @@ function App() {
         </div>
       </div>
       <div style={{display: "flex", margin: 5}}>
-        <div style={{width: "50%"}}>売上管理表1221更新.xlsx 用</div>
+        <div style={{width: "50%"}}>売上管理表1220更新.xlsx 用</div>
         <div style={{display: "flex", justifyContent: "space-around", width: "50%"}}>
           <button onClick={onClickDownloadButton1221} disabled={!convertedData2}>ダウンロード</button>
           <button onClick={onClickCopyButton1221} disabled={!convertedData2}>クリップボードにコピー</button>
