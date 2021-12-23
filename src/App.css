@@ -45,3 +45,15 @@
   border-width: "3px";
   border-radius: 20;
 }
+
+p.title {
+  text-align: left;
+  font-size: 18px;
+  border-bottom: 1px solid darkgray
+}
+
+p.description {
+  text-align: left;
+  font-size: 12px;
+  padding-left: 30px;
+}

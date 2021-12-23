@@ -1,20 +1,12 @@
 import './App.css'
-import {useState} from "react"
+import {useEffect, useState} from "react"
 import {useDropzone} from "react-dropzone"
 import {parse} from "csv-parse/lib/sync"
 import {stringify} from "csv-stringify/lib/sync"
 import janData1221 from "./jan1221.json"
 import janDataTanaka from "./janTanaka.json"
 import iconv from "iconv-lite"
-
-type Datum = {
-  "返品数": string,
-  "販売点数": string,
-  "商品コード": string,
-  "商品番号"?: string,
-  "販売点数 (net)"?: string,
-}
-
+import { retrieveLatestSalesData } from './salesData'
 
 // promisified fileReader, this was needed to specify 
 // the encoding of the input file (shift-jis).
@@ -102,14 +94,23 @@ const stringifyCSV = (data: Datum[]) => {
   })
 }
 
-
-
 function App() {
-  // convertedData2: for 売上管理表1220更新 .xlsx
-  // convertedData3: for ごちうさアトレ2021最終在庫報告用.xlsx
+  // autoDownloadedLatestSalesData: for 売上管理表1220更新 .xlsx, use the latest file on Azure storage
+  const [autoDownloadedLatestSalesData, setAutoDownloadedLatestSalesData] = useState<LatestSalesData>({
+    status: "initial"
+  })
+
+  // convertedData2: for 売上管理表1220更新 .xlsx, use the uploaded file by the user. 
   const [convertedData2, setConvertedData2] = useState<Datum[]|null>(null)
-  const [convertedData3, setConvertedData3] = useState<Datum[]|null>(null)
-  
+
+  // load the latest file from azure storage
+  // only run it initially
+  useEffect(() => {
+    retrieveLatestSalesData()
+      .then(result => setAutoDownloadedLatestSalesData(result))
+  }, [])
+
+  // only accept the first of the uploaded files.
   const filterFiles = (acceptedFiles: File[]) => {
     return acceptedFiles.length === 0? null: acceptedFiles[0]
   }
@@ -119,8 +120,6 @@ function App() {
       if (file) {
         convertCSV(file, "1221")
           .then(data => setConvertedData2(data))
-        convertCSV(file, "tanaka")
-          .then(data => setConvertedData3(data))
       }   
     }    
   })
@@ -135,7 +134,21 @@ function App() {
     aElement.click()
   }
 
-  // for janData1221
+  // for the auto downloaded file, janData1221
+  const onClickDownloadButton1221AzureStorage = async () => {
+    if (autoDownloadedLatestSalesData.status === "retrieved") {
+      downloadCSV(stringifyCSV(autoDownloadedLatestSalesData.data))
+    }
+  }
+  const onClickCopyButton1221AzureStorage = async () => {
+    if (autoDownloadedLatestSalesData.status === "retrieved") {
+      // the last element is excluded because it is the sum.
+      const salesData = autoDownloadedLatestSalesData.data.map(datum => calculateItemsSold(datum)).slice(0, -1)
+      navigator.clipboard.writeText(salesData.join("\n"))
+    }
+  }
+
+  // for self uploaded, janData1221
   const onClickDownloadButton1221 = async () => {
     if (convertedData2) {
       downloadCSV(stringifyCSV(convertedData2))
@@ -149,85 +162,122 @@ function App() {
     }
   }
 
-  // for janDataTanaka
-  const onClickCopyButtonTanaka = async () => {
-    if (convertedData3) {
-      // the last element is excluded because it is the sum.
-      const salesData = convertedData3.map(datum => calculateItemsSold(datum)).slice(0, -1)
-      navigator.clipboard.writeText(salesData.slice(0, 290).join("\n"))  
-      console.log(convertedData3)
-      console.log(salesData)
-    }
-  }
-
   return (
     <div className="App">
-      <div style={{border: "3px dotted black", borderRadius: 20, margin: 20}}>
-        <div {...getRootProps()}>
-          <input {...getInputProps()} />
-          <p>
-            ここにファイルをドロップするか、クリックしてファイルを選択してください。
-          </p>
+      <div id="useAutoDownloadedData">
+        <p className='title'>自動ダウンロードされたデータを使用する (実験的)</p>
+        <p className='description'>
+          スマレジ上から自動的にダウンロードされたデータを使用します。データは10時から21時の間、1時間おきに自動的にダウンロードされ、クラウド上に保存されています。保存されているデータのうち、最新のデータが使用されます。<br />
+          スマレジの締め時間の設定によっては、昨日のデータが使用される場合があります。例えば初期状態では締め時間は4時に設定されているため、0時からその日の最初の売上が記録されるまでは、昨日のデータが最新のデータとして使用されます。これは締め時間を0時に設定することで解消できます。
+        </p>
+        <div style={{display: "flex", margin: 5, justifyContent: "center"}}>
+          <div>
+            {autoDownloadedLatestSalesData.status === "initial" && "データをダウンロード中です"}
+            {autoDownloadedLatestSalesData.status === "noData" && "データが見つかりませんでした"}
+            {autoDownloadedLatestSalesData.status === "retrieved" && `データの作成時刻: ${autoDownloadedLatestSalesData.createdAt}`}
+            {autoDownloadedLatestSalesData.status === "failed" && "データのダウンロードに失敗しました"}
+          </div>
+        </div>
+        <div style={{display: "flex", margin: 5}}>
+          <div style={{width: "50%"}}>売上管理表1221更新.xlsx 用</div>
+          <div style={{display: "flex", justifyContent: "space-around", width: "50%"}}>
+            <button onClick={onClickDownloadButton1221AzureStorage} disabled={!(autoDownloadedLatestSalesData.status==="retrieved")}>ダウンロード</button>
+            <button onClick={onClickCopyButton1221AzureStorage} disabled={!(autoDownloadedLatestSalesData.status==="retrieved")}>クリップボードにコピー</button>
+          </div>
+        </div>
+        <div style={{width: "90%", margin: "auto", textAlign:"left", fontSize: 12}}>
+          <ul>
+            <li>ダウンロードされたファイルはWindows向けに作成されています。Macで開くと文字化けが起こります。</li>
+            <li>
+              クリップボードにコピーをクリックすると、販売点数の列だけがクリップボードにコピーされます。
+              Excel上にそのまま貼り付けることができます。
+            </li>
+          </ul>  
         </div>
       </div>
-      <div style={{display: "flex", margin: 5}}>
-        <div style={{width: "50%"}}>売上管理表1221更新.xlsx 用</div>
-        <div style={{display: "flex", justifyContent: "space-around", width: "50%"}}>
-          <button onClick={onClickDownloadButton1221} disabled={!convertedData2}>ダウンロード</button>
-          <button onClick={onClickCopyButton1221} disabled={!convertedData2}>クリップボードにコピー</button>
+      <div id="useSelfDownloadedData">
+        <p className='title'>自分で用意したデータを使用する</p>
+        <div style={{border: "3px dotted black", borderRadius: 20, margin: 20}}>
+          <div {...getRootProps()}>
+            <input {...getInputProps()} />
+            <p>
+              ここにファイルをドロップするか、クリックしてファイルを選択してください。
+            </p>
+          </div>
+        </div>
+        <div style={{display: "flex", margin: 5}}>
+          <div style={{width: "50%"}}>売上管理表1221更新.xlsx 用</div>
+          <div style={{display: "flex", justifyContent: "space-around", width: "50%"}}>
+            <button onClick={onClickDownloadButton1221} disabled={!convertedData2}>ダウンロード</button>
+            <button onClick={onClickCopyButton1221} disabled={!convertedData2}>クリップボードにコピー</button>
+          </div>
+        </div>
+        <div style={{width: "90%", margin: "auto", textAlign:"left", fontSize: 12}}>
+          <ul>
+            <li>スマレジからダウンロードするときに"Windows (shift-jis)"を選択したファイルを使用してください</li>
+            <li>ダウンロードされたファイルはWindows向けに作成されています。Macで開くと文字化けが起こります。</li>
+            <li>
+              クリップボードにコピーをクリックすると、販売点数の列だけがクリップボードにコピーされます。
+              Excel上にそのまま貼り付けることができます。
+            </li>
+          </ul>  
         </div>
       </div>
-      <div style={{display: "flex", margin: 5}}>
-        <div style={{width: "50%"}}>ごちうさアトレ2021最終在庫報告用.xlsx 用 (12/18時点)</div>
-        <div style={{display: "flex", justifyContent: "space-around", width: "50%"}}>
-          <button disabled={true}>ダウンロード</button>
-          <button onClick={onClickCopyButtonTanaka} disabled={!convertedData3}>クリップボードにコピー</button>
-        </div>
-      </div>
-      <div style={{width: "90%", margin: "auto", textAlign:"left"}}>
-        <ul>
-          <li>スマレジからダウンロードするときに"Windows (shift-jis)"を選択したファイルを使用してください</li>
-          <li>ダウンロードされたファイルはWindows向けに作成されています。Macで開くと文字化けが起こります。</li>
-          <li>
-            クリップボードにコピーをクリックすると、販売点数の列だけがクリップボードにコピーされます。
-            Excel上にそのまま貼り付けることができます。
-          </li>
-        </ul>  
-      </div>
-      <hr />
-      <div style={{marginTop: 20}}>
-        <div style={{fontSize: 18}}>変更履歴</div>
-        <div style={{marginTop: 10, textAlign: "left", fontSize: 12}}>
-          <p>
-            2021/12/16 17:00<br />
-            <ul>
-              <li>「【ごちうさ】売上管理表1216更新 .xlsx」に対応。</li>
+      <div id="changelog">
+        <p className='title'>変更履歴</p>
+        <p className='description'>最新の履歴が一番上に表示されます。</p>
+        <div>
+          <div style={{marginTop: 10, textAlign: "left", fontSize: 12}}>
+            <p>
+              2021/12/24 02:00<br />
               <ul>
-                <li>旧94番「ご当地ティッピーTシャツ-REVIVAL-」(4573190000000)を削除。それに伴い旧95番以降は1番ずつ移動。(ex. 95-&lt;94)</li>
-                <li>旧265番「クリアファイル3枚セット＜ご注文はオーケストラですか？＞」(4573189373198) 以降に新規商品25点を追加。</li>
-                <li>末尾に「レジ袋」(123456789012) を追加。</li>
-                <li>総登録数290点。</li>
+                <li>「ごちうさアトレ2021最終在庫報告用.xlsx」用を削除。</li>
+                <li>自動ダウンロードされたデータを使用する機能を追加。</li>
               </ul>
-            </ul>
-          </p>
-          <p>
-            2021/12/18 14:00<br />
-            <ul>
-              <li>「ごちうさアトレ2021最終在庫報告用.xlsx」に対応。</li>
-            </ul>
-          </p>
-          <p>
-            2021/12/21 01:30<br />
-            <ul>
-              <li>「【ごちうさ】売上管理表1220更新 .xlsx」に対応。</li>
+            </p>
+            <p>
+              2021/12/21 01:30<br />
               <ul>
-                <li>289番「アクリル時計＜flight attendant＞」(4573189369979)以降に新規商品65点を追加。</li>
-                <li>末尾に「レジ袋」(123456789012, 旧290番-&gt;新355番) を移動。</li>
-                <li>総登録数355点。</li>
+                <li>「【ごちうさ】売上管理表1220更新 .xlsx」に対応。</li>
+                <ul>
+                  <li>289番「アクリル時計＜flight attendant＞」(4573189369979)以降に新規商品65点を追加。</li>
+                  <li>末尾に「レジ袋」(123456789012, 旧290番-&gt;新355番) を移動。</li>
+                  <li>総登録数355点。</li>
+                </ul>
+                <li>「【ごちうさ】売上管理表1216更新 .xlsx」用を削除。</li>
               </ul>
-              <li>「【ごちうさ】売上管理表1216更新 .xlsx」用を削除。</li>
-            </ul>
-          </p>
+            </p>
+            <p>
+              2021/12/18 14:00<br />
+              <ul>
+                <li>「ごちうさアトレ2021最終在庫報告用.xlsx」に対応。</li>
+              </ul>
+            </p>
+            <p>
+              2021/12/16 17:00<br />
+              <ul>
+                <li>「【ごちうさ】売上管理表1216更新 .xlsx」に対応。</li>
+                <ul>
+                  <li>旧94番「ご当地ティッピーTシャツ-REVIVAL-」(4573190000000)を削除。それに伴い旧95番以降は1番ずつ移動。(ex. 95-&lt;94)</li>
+                  <li>旧265番「クリアファイル3枚セット＜ご注文はオーケストラですか？＞」(4573189373198) 以降に新規商品25点を追加。</li>
+                  <li>末尾に「レジ袋」(123456789012) を追加。</li>
+                  <li>総登録数290点。</li>
+                </ul>
+              </ul>
+            </p>
+            <p>
+              2021/12/16 17:00<br />
+              <ul>
+                <li>「【ごちうさ】売上管理表1216更新 .xlsx」に対応。</li>
+                <ul>
+                  <li>旧94番「ご当地ティッピーTシャツ-REVIVAL-」(4573190000000)を削除。それに伴い旧95番以降は1番ずつ移動。(ex. 95-&lt;94)</li>
+                  <li>旧265番「クリアファイル3枚セット＜ご注文はオーケストラですか？＞」(4573189373198) 以降に新規商品25点を追加。</li>
+                  <li>末尾に「レジ袋」(123456789012) を追加。</li>
+                  <li>総登録数290点。</li>
+                </ul>
+              </ul>
+            </p>
+          </div>
         </div>
       </div>
     </div>
